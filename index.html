@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seguimiento de Cursos Bíblicos y Revisitas</title>
+    
+    <!-- PWA & Mobile Install Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Revisitas">
+    <link rel="apple-touch-icon" href="rev-192.png">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        #map, #modalMap {
+            height: 100%;
+            width: 100%;
+            min-height: 360px;
+            border-radius: 0.75rem;
+            z-index: 10;
+        }
+        .leaflet-popup-content-wrapper {
+            border-radius: 0.75rem;
+            padding: 4px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .icon-3d-shadow {
+            filter: drop-shadow(0px 8px 12px rgba(15, 23, 42, 0.25));
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 flex flex-col min-h-screen">
+
+    <!-- Plantilla del Ícono 3D de Predicación SVG (Incrustable) -->
+    <svg id="svgPreaching3D" class="hidden" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="bgGrad" x1="0" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#4F46E5"/>
+                <stop offset="100%" stop-color="#2563EB"/>
+            </linearGradient>
+            <linearGradient id="skinGrad" x1="50" y1="30" x2="150" y2="150" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#FFDFC4"/>
+                <stop offset="100%" stop-color="#F3B08A"/>
+            </linearGradient>
+            <linearGradient id="shirtGrad" x1="30" y1="100" x2="170" y2="190" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#10B981"/>
+                <stop offset="100%" stop-color="#047857"/>
+            </linearGradient>
+            <linearGradient id="bibleGrad" x1="60" y1="100" x2="140" y2="160" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#9333EA"/>
+                <stop offset="100%" stop-color="#581C87"/>
+            </linearGradient>
+            <linearGradient id="pageGrad" x1="70" y1="110" x2="130" y2="150" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#FFFFFF"/>
+                <stop offset="100%" stop-color="#F1F5F9"/>
+            </linearGradient>
+            <filter id="shadow3D" x="-10%" y="-10%" width="130%" height="130%">
+                <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#0F172A" flood-opacity="0.3"/>
+            </filter>
+        </defs>
+        <!-- Círculo Base 3D -->
+        <circle cx="100" cy="100" r="92" fill="url(#bgGrad)" filter="url(#shadow3D)"/>
+        <!-- Destello 3D Esfera -->
+        <circle cx="70" cy="50" r="35" fill="white" opacity="0.15"/>
+        
+        <!-- Cuerpo / Camisa con relieve -->
+        <path d="M45 185 C45 135 68 120 100 120 C132 120 155 135 155 185 Z" fill="url(#shirtGrad)"/>
+        <!-- Cuello -->
+        <path d="M85 110 L100 125 L115 110 Z" fill="#E2E8F0" opacity="0.9"/>
+
+        <!-- Cabeza y Rostro 3D -->
+        <circle cx="100" cy="72" r="32" fill="url(#skinGrad)" filter="url(#shadow3D)"/>
+        <!-- Oreja -->
+        <circle cx="132" cy="74" r="7" fill="#F3B08A"/>
+        <!-- Cabello Estilizado 3D -->
+        <path d="M68 68 C68 38 88 32 104 32 C120 32 134 42 134 56 C134 60 128 62 124 56 C118 48 106 44 96 50 C86 56 80 68 68 68 Z" fill="#334155"/>
+
+        <!-- Mano izquierda que sostiene la Biblia -->
+        <circle cx="68" cy="138" r="9" fill="url(#skinGrad)"/>
+        <!-- Mano derecha gestual (enseñando/hablando) -->
+        <path d="M142 108 C150 102 162 106 158 116 C154 124 142 122 136 118 Z" fill="url(#skinGrad)" filter="url(#shadow3D)"/>
+
+        <!-- Biblia Abierta 3D -->
+        <g filter="url(#shadow3D)">
+            <!-- Pasta de la Biblia -->
+            <path d="M56 128 L98 136 L98 168 L54 158 Z" fill="url(#bibleGrad)"/>
+            <path d="M144 128 L102 136 L102 168 L146 158 Z" fill="url(#bibleGrad)"/>
+            <!-- Páginas de la Biblia -->
+            <path d="M60 126 L98 133 L98 163 L58 154 Z" fill="url(#pageGrad)"/>
+            <path d="M140 126 L102 133 L102 163 L142 154 Z" fill="url(#pageGrad)"/>
+            <!-- Lomo de la Biblia -->
+            <path d="M98 133 L102 133 L102 168 L98 168 Z" fill="#3B0764"/>
+            <!-- Cruz Dorada en la Biblia -->
+            <path d="M76 138 H82 M79 135 V143" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/>
+        </g>
+
+        <!-- Ondas de Voz / Predicación (3D Glow) -->
+        <path d="M148 70 C156 74 156 84 148 88" stroke="#FDE047" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.9"/>
+        <path d="M158 62 C170 70 170 88 158 96" stroke="#FDE047" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.6"/>
+    </svg>
+
+    <!-- 1. PANTALLA DE INGRESO / LOGIN (OBLIGATORIA) -->
+    <div id="authScreen" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-100 flex flex-col">
+            
+            <div class="text-center mb-6">
+                <!-- LOGO 3D DE PREDICACIÓN -->
+                <div class="w-20 h-20 mx-auto mb-3 icon-3d-shadow transition transform hover:scale-105">
+                    <svg class="w-full h-full"><use href="#svgPreaching3D"/></svg>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800">Cursos Bíblicos GPS</h2>
+                <p class="text-xs text-slate-500 mt-1">Ingresa a tu cuenta personal para acceder a tus registros de revisitas y estudios.</p>
+            </div>
+
+            <!-- Tabs Login / Registro -->
+            <div class="flex border-b border-slate-200 mb-6 bg-slate-100 p-1 rounded-xl">
+                <button id="tabSignIn" onclick="switchAuthTab('signin')" class="flex-1 py-2 text-xs font-bold rounded-lg bg-white text-indigo-600 shadow-sm transition">
+                    Iniciar Sesión
+                </button>
+                <button id="tabSignUp" onclick="switchAuthTab('signup')" class="flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-700 transition">
+                    Crear Cuenta
+                </button>
+            </div>
+
+            <!-- Error message container -->
+            <div id="authError" class="hidden mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg flex items-center gap-2">
+                <i class="fa-solid fa-circle-exclamation text-sm"></i>
+                <span id="authErrorMsg"></span>
+            </div>
+
+            <!-- Form Email/Password -->
+            <form id="authForm" onsubmit="handleEmailAuth(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Correo Electrónico</label>
+                    <div class="relative">
+                        <i class="fa-regular fa-envelope absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="email" id="authEmail" required placeholder="tu@correo.com" class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Contraseña</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="password" id="authPassword" required minlength="6" placeholder="••••••••" class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <button type="submit" id="authSubmitBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg text-sm transition shadow-md flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                    <span id="authSubmitText">Iniciar Sesión</span>
+                </button>
+            </form>
+
+            <div class="relative my-6 text-center">
+                <hr class="border-slate-200">
+                <span class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[11px] font-medium text-slate-400">O CONTINÚA CON</span>
+            </div>
+
+            <!-- Google Sign-In -->
+            <button id="googleAuthBtn" class="w-full bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2.5 px-4 border border-slate-300 rounded-lg shadow-sm flex items-center justify-center gap-3 transition">
+                <svg class="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                Google Sign-In
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. MAIN APP CONTAINER -->
+    <div id="appContainer" class="flex flex-col min-h-screen">
+        <!-- HEADER / NAVBAR -->
+        <header class="bg-indigo-700 text-white shadow-lg sticky top-0 z-30">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <!-- Logo 3D & Title -->
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 icon-3d-shadow flex-shrink-0">
+                            <svg class="w-full h-full"><use href="#svgPreaching3D"/></svg>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-lg leading-tight sm:text-xl">Revisitas & Cursos GPS</h1>
+                            <p class="text-xs text-indigo-200 hidden sm:block">Registro personal y privado en la nube</p>
+                        </div>
+                    </div>
+
+                    <!-- Sync Status & User Menu -->
+                    <div class="flex items-center space-x-2 sm:space-x-3">
+                        <!-- Botón para instalar PWA (Se muestra dinámicamente si el navegador lo permite) -->
+                        <button id="pwaInstallBtn" onclick="installPWA()" class="hidden bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-3 py-2 rounded-lg text-sm transition flex items-center shadow-md active:scale-95">
+                            <i class="fa-solid fa-download mr-1.5"></i>
+                            <span class="hidden sm:inline">Instalar App</span>
+                        </button>
+
+                        <button onclick="openStudentModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold px-3 py-2 rounded-lg text-sm transition flex items-center shadow-md active:scale-95">
+                            <i class="fa-solid fa-user-plus mr-1.5"></i>
+                            <span class="hidden sm:inline">Nuevo Registro</span>
+                        </button>
+
+                        <div class="relative flex items-center bg-indigo-800/80 px-3 py-1.5 rounded-xl border border-indigo-600 text-xs">
+                            <i class="fa-solid fa-user-circle text-amber-300 mr-2 text-base"></i>
+                            <div class="hidden md:block text-left mr-2">
+                                <p id="activeUserEmail" class="font-bold truncate max-w-[140px]">Cargando...</p>
+                                <p class="text-[10px] text-indigo-200">Registros Privados</p>
+                            </div>
+                            <button onclick="handleSignOut()" title="Cerrar Sesión" class="text-indigo-200 hover:text-white transition ml-1 p-1">
+                                <i class="fa-solid fa-right-from-bracket text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+            <!-- METRICAS / DASHBOARD -->
+            <section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 uppercase">Mis Estudiantes</p>
+                        <h3 id="statTotal" class="text-2xl font-bold text-slate-800">0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+                        <i class="fa-solid fa-users text-lg"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-emerald-600 uppercase">Al Día (&lt;7 días)</p>
+                        <h3 id="statRecent" class="text-2xl font-bold text-emerald-600">0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                        <i class="fa-solid fa-circle-check text-lg"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-amber-600 uppercase">Seguimiento (7-14d)</p>
+                        <h3 id="statWarning" class="text-2xl font-bold text-amber-600">0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
+                        <i class="fa-solid fa-clock text-lg"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-rose-600 uppercase">Urgente (&gt;14d)</p>
+                        <h3 id="statAlert" class="text-2xl font-bold text-rose-600">0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
+                        <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PESTAÑAS DE NAVEGACIÓN -->
+            <div class="flex border-b border-slate-200 mb-6 bg-white rounded-t-xl px-2 pt-2 shadow-sm">
+                <button id="tabListBtn" onclick="switchTab('list')" class="px-4 py-2.5 font-medium text-sm border-b-2 border-indigo-600 text-indigo-600 flex items-center gap-2 transition">
+                    <i class="fa-solid fa-list-check"></i> Mis Estudiantes y Revisitas
+                </button>
+                <button id="tabMapBtn" onclick="switchTab('map')" class="px-4 py-2.5 font-medium text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2 transition">
+                    <i class="fa-solid fa-map-location-dot"></i> Mapa y Rutas GPS
+                </button>
+            </div>
+
+            <!-- SECCIÓN 1: LISTA DE ESTUDIANTES -->
+            <div id="sectionList" class="space-y-4">
+
+                <!-- Filtros y Buscador -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-3 justify-between items-center">
+                    <div class="relative w-full sm:w-80">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="searchInput" oninput="renderStudents()" placeholder="Buscar por nombre, teléfono, dirección..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <div class="flex flex-wrap w-full sm:w-auto gap-2 items-center">
+                        <select id="filterStatus" onchange="renderStudents()" class="bg-slate-50 border border-slate-300 rounded-lg text-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="ALL">Todos los tipos</option>
+                            <option value="Estudio Bíblico">Estudio Bíblico</option>
+                            <option value="Revisita">Revisita</option>
+                            <option value="Interesado">Interesado</option>
+                            <option value="Pausado">Pausado</option>
+                        </select>
+
+                        <select id="filterAlert" onchange="renderStudents()" class="bg-slate-50 border border-slate-300 rounded-lg text-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium">
+                            <option value="ALL">Todas las visitas</option>
+                            <option value="GREEN" class="text-emerald-600">🟢 Visitados recientemente (&lt;7d)</option>
+                            <option value="YELLOW" class="text-amber-600">🟡 Requieren seguimiento (7-14d)</option>
+                            <option value="RED" class="text-rose-600">🔴 Sin visitar hace tiempo (&gt;14d)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Grilla de Cards -->
+                <div id="studentsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="text-center py-12 bg-white rounded-xl border border-slate-200">
+                    <i class="fa-solid fa-circle-notch fa-spin text-3xl text-indigo-600 mb-3"></i>
+                    <p class="text-sm font-medium text-slate-600">Cargando tus registros personales desde Firestore...</p>
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="hidden text-center py-12 bg-white rounded-xl border border-slate-200">
+                    <div class="w-16 h-16 mx-auto mb-3 text-slate-300 flex items-center justify-center rounded-full bg-slate-100">
+                        <i class="fa-solid fa-book-open text-3xl"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-slate-700">Aún no tienes registros agregados</h3>
+                    <p class="text-sm text-slate-500 max-w-sm mx-auto mt-1">Registra tu primera revisita o curso bíblico para gestionar tu territorio.</p>
+                    <button onclick="openStudentModal()" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition shadow-sm">
+                        + Agregar Primer Registro
+                    </button>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 2: MAPA Y RECORRIDOS GPS -->
+            <div id="sectionMap" class="hidden space-y-4">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col h-full">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2 mb-3">
+                            <i class="fa-solid fa-route text-indigo-600"></i> Planificador de Recorrido
+                        </h3>
+                        <p class="text-xs text-slate-500 mb-4">Selecciona las personas que visitarás hoy para calcular el recorrido más optimizado.</p>
+
+                        <div class="space-y-2 mb-4">
+                            <label class="text-xs font-semibold text-slate-600">Selección Rápida:</label>
+                            <div class="flex gap-2">
+                                <button onclick="selectForRoute('URGENT')" class="flex-1 text-xs bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 py-1.5 px-2 rounded-md font-medium transition">
+                                    🔴 Pendientes
+                                </button>
+                                <button onclick="selectForRoute('ALL')" class="flex-1 text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 py-1.5 px-2 rounded-md font-medium transition">
+                                    Todos con GPS
+                                </button>
+                                <button onclick="clearRouteSelection()" class="text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 py-1.5 px-2 rounded-md transition">
+                                    Limpiar
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="routeSelectionList" class="flex-grow max-h-60 lg:max-h-80 overflow-y-auto space-y-2 pr-1 border border-slate-100 rounded-lg p-2 bg-slate-50/50 mb-4"></div>
+
+                        <div class="pt-2 border-t border-slate-100 space-y-2">
+                            <button onclick="drawOptimizedRoute()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-3 rounded-lg text-sm transition flex items-center justify-center gap-2 shadow-sm">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Trazar Ruta Óptima
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-2 bg-white p-2 rounded-xl shadow-sm border border-slate-200 min-h-[400px] lg:min-h-[500px] flex flex-col">
+                        <div class="flex justify-between items-center p-2 mb-1">
+                            <span class="text-xs font-medium text-slate-500">
+                                <i class="fa-solid fa-circle-info text-indigo-500"></i> Toca un marcador para navegar con Google Maps o Waze
+                            </span>
+                            <div class="flex items-center gap-3 text-xs">
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> &lt;7d</span>
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 7-14d</span>
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> &gt;14d</span>
+                            </div>
+                        </div>
+                        <div id="map" class="flex-grow rounded-lg"></div>
+                    </div>
+
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL: REGISTRAR / EDITAR ESTUDIANTE -->
+    <div id="studentModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 flex flex-col">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+                <h3 id="modalStudentTitle" class="font-bold text-slate-800 text-lg">Nuevo Registro</h3>
+                <button onclick="closeStudentModal()" class="text-slate-400 hover:text-slate-600 transition p-1">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <form id="studentForm" onsubmit="handleStudentFormSubmit(event)" class="p-6 space-y-4 flex-grow">
+                <input type="hidden" id="studentId">
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Nombre Completo *</label>
+                        <input type="text" id="inputName" required placeholder="Ej: Maria Gonzalez" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Teléfono (Llamadas / WhatsApp)</label>
+                        <input type="tel" id="inputPhone" placeholder="+5493564123456" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <p class="text-[10px] text-slate-400 mt-1">Incluir código de país para WhatsApp directo.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Tipo / Estado</label>
+                        <select id="inputStatus" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+                            <option value="Estudio Bíblico">Estudio Bíblico</option>
+                            <option value="Revisita">Revisita</option>
+                            <option value="Interesado">Interesado</option>
+                            <option value="Pausado">Pausado</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Día Habitual</label>
+                        <select id="inputDay" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+                            <option value="Lunes">Lunes</option>
+                            <option value="Martes">Martes</option>
+                            <option value="Miércoles">Miércoles</option>
+                            <option value="Jueves">Jueves</option>
+                            <option value="Viernes">Viernes</option>
+                            <option value="Sábado">Sábado</option>
+                            <option value="Domingo">Domingo</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Horario Aproximado</label>
+                        <input type="time" id="inputTime" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Publicación / Lección / Tema Actual</label>
+                        <input type="text" id="inputLesson" placeholder="Ej: Disfrute de la Vida - Lección 04" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Dirección / Referencia del Domicilio</label>
+                        <input type="text" id="inputAddress" placeholder="Calle, número, entre calles o referencia" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-200">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-xs font-bold text-slate-700 flex items-center gap-1">
+                            <i class="fa-solid fa-location-dot text-rose-500"></i> Posición GPS Domicilio
+                        </label>
+                        <button type="button" onclick="getCurrentLocation()" class="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs px-2.5 py-1 rounded-md font-medium transition flex items-center gap-1 border border-indigo-200">
+                            <i class="fa-solid fa-crosshairs"></i> Obtener Mi GPS Actual
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                            <span class="text-[10px] text-slate-500">Latitud</span>
+                            <input type="number" step="any" id="inputLat" placeholder="-31.4201" class="w-full px-2 py-1 text-xs border border-slate-300 rounded bg-slate-50">
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-500">Longitud</span>
+                            <input type="number" step="any" id="inputLng" placeholder="-64.1888" class="w-full px-2 py-1 text-xs border border-slate-300 rounded bg-slate-50">
+                        </div>
+                    </div>
+
+                    <p class="text-[11px] text-slate-500 mb-1">Toca en el mapa para ubicar el domicilio exacto:</p>
+                    <div class="h-44 w-full rounded-lg overflow-hidden border border-slate-300 relative">
+                        <div id="modalMap"></div>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Notas / Observaciones</label>
+                    <textarea id="inputNotes" rows="2" placeholder="Información de la familia, temas de interés o detalles de contacto" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex justify-end space-x-2">
+                    <button type="button" onclick="closeStudentModal()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-sm transition flex items-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Guardar Registro
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: HISTORIAL DE VISITAS -->
+    <div id="historyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 flex flex-col">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+                <div>
+                    <h3 id="historyStudentName" class="font-bold text-slate-800 text-lg">Historial de Visitas</h3>
+                    <p id="historyStudentMeta" class="text-xs text-slate-500">Estudiante</p>
+                </div>
+                <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-slate-600 transition p-1">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6 flex-grow">
+                <form id="visitForm" onsubmit="handleVisitFormSubmit(event)" class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <h4 class="font-semibold text-xs uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-calendar-plus"></i> Registrar Nueva Atención / Visita
+                    </h4>
+                    <input type="hidden" id="visitStudentId">
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Fecha *</label>
+                            <input type="date" id="visitDate" required class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Interés / Respuesta</label>
+                            <select id="visitRating" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                <option value="Excelente">⭐⭐⭐ Excelente</option>
+                                <option value="Bueno">⭐⭐ Bueno</option>
+                                <option value="Breve">⭐ Breve / Ocupado</option>
+                                <option value="Ausente">❌ Ausente</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Tema / Puntos Analizados</label>
+                        <input type="text" id="visitLesson" placeholder="Ej: Lección 4 Puntos 1 y 2" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Notas / Próxima Pregunta o Publicación</label>
+                        <textarea id="visitNotes" rows="2" placeholder="Pregunta pendiente para la siguiente visita" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-1.5 rounded-lg text-sm shadow-sm transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-plus"></i> Guardar Visita
+                        </button>
+                    </div>
+                </form>
+
+                <div>
+                    <h4 class="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-slate-500"></i> Visitas Anteriores
+                    </h4>
+                    <div id="visitsTimeline" class="space-y-3 max-h-64 overflow-y-auto pr-1"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICACIONES TOAST -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm z-50 transition transform translate-y-20 opacity-0 pointer-events-none">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toastMessage">Operación realizada con éxito</span>
+    </div>
+
+    <!-- Generación del Favicon dinámico a partir del ícono 3D SVG -->
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const svgElement = document.getElementById('svgPreaching3D');
+            if (svgElement) {
+                const svgData = new XMLSerializer().serializeToString(svgElement);
+                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(svgBlob);
+                const link = document.createElement('link');
+                link.rel = 'icon';
+                link.type = 'image/svg+xml';
+                link.href = url;
+                document.head.appendChild(link);
+            }
+        });
+    </script>
+
+    <!-- FIREBASE SERVICES & MULTI-USER DATA ISOLATION -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            GoogleAuthProvider, 
+            signInWithPopup, 
+            signInWithEmailAndPassword,
+            createUserWithEmailAndPassword,
+            signOut, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            doc, 
+            addDoc, 
+            updateDoc, 
+            deleteDoc, 
+            onSnapshot 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // FIREBASE CONFIGURATION
+        const firebaseConfig = {
+            apiKey: "AIzaSyD_2qwzxaE1unrRogzQqbrkoZ6YduaJAsg",
+            authDomain: "revisitas-160e7.firebaseapp.com",
+            projectId: "revisitas-160e7",
+            storageBucket: "revisitas-160e7.firebasestorage.app",
+            messagingSenderId: "74460982546",
+            appId: "1:74460982546:web:9e85faa053fe2a003597cb",
+            measurementId: "G-LH108EPBPT"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Global State
+        window.students = [];
+        window.currentUser = null;
+        window.authMode = 'signin';
+        let unsubscribeRealtime = null;
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'revisitas-app';
+
+        // AUTHENTICATION LISTENER
+        onAuthStateChanged(auth, (user) => {
+            window.currentUser = user;
+            const authScreen = document.getElementById('authScreen');
+
+            if (user) {
+                authScreen.classList.add('hidden');
+                document.getElementById('activeUserEmail').innerText = user.email || 'Usuario';
+                
+                // Suscribirse a los datos privados del usuario actual
+                subscribeToUserStudents(user.uid);
+            } else {
+                authScreen.classList.remove('hidden');
+                document.getElementById('activeUserEmail').innerText = '';
+                if (unsubscribeRealtime) unsubscribeRealtime();
+                window.students = [];
+                window.renderStudents();
+            }
+        });
+
+        // AUTH ACTIONS
+        window.switchAuthTab = function(mode) {
+            window.authMode = mode;
+            const btnSignIn = document.getElementById('tabSignIn');
+            const btnSignUp = document.getElementById('tabSignUp');
+            const submitText = document.getElementById('authSubmitText');
+            document.getElementById('authError').classList.add('hidden');
+
+            if (mode === 'signin') {
+                btnSignIn.className = "flex-1 py-2 text-xs font-bold rounded-lg bg-white text-indigo-600 shadow-sm transition";
+                btnSignUp.className = "flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-700 transition";
+                submitText.innerText = "Iniciar Sesión";
+            } else {
+                btnSignUp.className = "flex-1 py-2 text-xs font-bold rounded-lg bg-white text-indigo-600 shadow-sm transition";
+                btnSignIn.className = "flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-700 transition";
+                submitText.innerText = "Crear Cuenta Nueva";
+            }
+        };
+
+        window.handleEmailAuth = async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            const errBox = document.getElementById('authError');
+            const errMsg = document.getElementById('authErrorMsg');
+
+            errBox.classList.add('hidden');
+
+            try {
+                if (window.authMode === 'signin') {
+                    await signInWithEmailAndPassword(auth, email, password);
+                } else {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                }
+            } catch (err) {
+                errBox.classList.remove('hidden');
+                if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+                    errMsg.innerText = "Correo o contraseña incorrectos.";
+                } else if (err.code === 'auth/email-already-in-use') {
+                    errMsg.innerText = "Este correo ya está registrado. Intenta iniciar sesión.";
+                } else if (err.code === 'auth/weak-password') {
+                    errMsg.innerText = "La contraseña debe tener al menos 6 caracteres.";
+                } else {
+                    errMsg.innerText = err.message;
+                }
+            }
+        };
+
+        document.getElementById('googleAuthBtn').addEventListener('click', async () => {
+            try {
+                const provider = new GoogleAuthProvider();
+                await signInWithPopup(auth, provider);
+            } catch (err) {
+                const errBox = document.getElementById('authError');
+                errBox.classList.remove('hidden');
+                document.getElementById('authErrorMsg').innerText = err.message;
+            }
+        });
+
+        window.handleSignOut = function() {
+            if (confirm('¿Deseas cerrar tu sesión?')) {
+                signOut(auth);
+            }
+        };
+
+        // SUSCRIPCIÓN MULTI-USUARIO A FIRESTORE
+        function subscribeToUserStudents(userId) {
+            if (unsubscribeRealtime) unsubscribeRealtime();
+
+            // RUTA DE FIRESTORE AISLADA PARA CADA USUARIO
+            const userStudentsCol = collection(db, 'artifacts', appId, 'users', userId, 'estudiantes');
+
+            unsubscribeRealtime = onSnapshot(userStudentsCol, (snapshot) => {
+                const list = [];
+                snapshot.forEach((docSnap) => {
+                    list.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                window.students = list;
+
+                document.getElementById('loadingState').classList.add('hidden');
+                window.renderDashboard();
+                window.renderStudents();
+
+                if (window.map) {
+                    window.renderMapMarkers();
+                    window.renderRouteSelectionList();
+                }
+            }, (error) => {
+                console.error("Firestore Error:", error);
+                document.getElementById('loadingState').innerHTML = `
+                    <div class="text-rose-600 p-4">
+                        <i class="fa-solid fa-triangle-exclamation text-2xl mb-2"></i>
+                        <p class="font-bold">Error de sincronización con tus datos</p>
+                        <p class="text-xs mt-1">${error.message}</p>
+                    </div>
+                `;
+            });
+        }
+
+        // ACCIONES CRUD ASOCIADAS AL USUARIO ACTUAL
+        window.saveStudentToFirestore = async function(studentData) {
+            if (!window.currentUser) return;
+            const userId = window.currentUser.uid;
+            const userStudentsCol = collection(db, 'artifacts', appId, 'users', userId, 'estudiantes');
+
+            try {
+                if (studentData.id) {
+                    const docRef = doc(db, 'artifacts', appId, 'users', userId, 'estudiantes', studentData.id);
+                    delete studentData.id;
+                    await updateDoc(docRef, studentData);
+                    window.showToast('Registro actualizado en tu cuenta');
+                } else {
+                    delete studentData.id;
+                    await addDoc(userStudentsCol, studentData);
+                    window.showToast('Nuevo registro guardado con éxito');
+                }
+            } catch (err) {
+                alert('Error al guardar: ' + err.message);
+            }
+        };
+
+        window.deleteStudentFromFirestore = async function(studentId) {
+            if (!window.currentUser) return;
+            const userId = window.currentUser.uid;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'users', userId, 'estudiantes', studentId);
+                await deleteDoc(docRef);
+                window.showToast('Registro eliminado de tu cuenta', 'fa-trash-can text-rose-400');
+            } catch (err) {
+                alert('Error al eliminar: ' + err.message);
+            }
+        };
+
+        window.updateStudentVisitsInFirestore = async function(studentId, visitsArray, currentLesson) {
+            if (!window.currentUser) return;
+            const userId = window.currentUser.uid;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'users', userId, 'estudiantes', studentId);
+                const payload = { visits: visitsArray };
+                if (currentLesson) payload.lesson = currentLesson;
+                await updateDoc(docRef, payload);
+                window.showToast('Visita guardada en tu cuenta');
+            } catch (err) {
+                alert('Error al actualizar visitas: ' + err.message);
+            }
+        };
+    </script>
+
+    <!-- UI APP LOGIC & UTILITIES -->
+    <script>
+        let map = null;
+        let modalMap = null;
+        let modalMarker = null;
+        let mapMarkers = [];
+        let routeLayerGroup = null;
+        let selectedForRouteIds = [];
+
+        window.onload = function() {
+            initModalMap();
+        };
+
+        function cleanPhoneNumber(phone) {
+            if (!phone) return '';
+            return phone.replace(/[^0-9]/g, '');
+        }
+
+        function showToast(msg, icon = 'fa-circle-check text-emerald-400') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').innerText = msg;
+            document.getElementById('toastIcon').className = `fa-solid ${icon} text-lg`;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        function getDaysSinceLastVisit(student) {
+            if (!student.visits || student.visits.length === 0) return 999;
+            const sorted = [...student.visits].sort((a,b) => new Date(b.date) - new Date(a.date));
+            const lastDate = new Date(sorted[0].date);
+            const today = new Date();
+            const diffTime = Math.abs(today - lastDate);
+            return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        function getAlertStatus(days) {
+            if (days < 7) return { code: 'GREEN', color: 'emerald', label: 'Al día', badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200' };
+            if (days <= 14) return { code: 'YELLOW', color: 'amber', label: 'Seguimiento', badgeClass: 'bg-amber-100 text-amber-800 border-amber-200' };
+            return { code: 'RED', color: 'rose', label: 'Urgente', badgeClass: 'bg-rose-100 text-rose-800 border-rose-200 font-bold' };
+        }
+
+        function renderDashboard() {
+            let total = window.students.length;
+            let recent = 0;
+            let warning = 0;
+            let alertCount = 0;
+
+            window.students.forEach(st => {
+                let days = getDaysSinceLastVisit(st);
+                let status = getAlertStatus(days);
+                if (status.code === 'GREEN') recent++;
+                else if (status.code === 'YELLOW') warning++;
+                else alertCount++;
+            });
+
+            document.getElementById('statTotal').innerText = total;
+            document.getElementById('statRecent').innerText = recent;
+            document.getElementById('statWarning').innerText = warning;
+            document.getElementById('statAlert').innerText = alertCount;
+        }
+
+        function renderStudents() {
+            renderDashboard();
+            const grid = document.getElementById('studentsGrid');
+            const emptyState = document.getElementById('emptyState');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const filterStatus = document.getElementById('filterStatus').value;
+            const filterAlert = document.getElementById('filterAlert').value;
+
+            grid.innerHTML = '';
+
+            const filtered = window.students.filter(st => {
+                const days = getDaysSinceLastVisit(st);
+                const alertStatus = getAlertStatus(days);
+
+                const matchesSearch = (st.name && st.name.toLowerCase().includes(search)) || 
+                                      (st.phone && st.phone.includes(search)) ||
+                                      (st.address && st.address.toLowerCase().includes(search)) ||
+                                      (st.lesson && st.lesson.toLowerCase().includes(search));
+                
+                const matchesStatus = filterStatus === 'ALL' || st.status === filterStatus;
+                const matchesAlert = filterAlert === 'ALL' || alertStatus.code === filterAlert;
+
+                return matchesSearch && matchesStatus && matchesAlert;
+            });
+
+            if (filtered.length === 0 && window.students.length >= 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filtered.forEach(st => {
+                const days = getDaysSinceLastVisit(st);
+                const alertInfo = getAlertStatus(days);
+
+                let lastVisitText = "Sin visitas registradas";
+                if (st.visits && st.visits.length > 0) {
+                    const sortedVisits = [...st.visits].sort((a,b) => new Date(b.date) - new Date(a.date));
+                    const lastDate = sortedVisits[0].date;
+                    lastVisitText = `Hace ${days} día(s) (${lastDate})`;
+                }
+
+                const cleanPhone = cleanPhoneNumber(st.phone);
+                const waUrl = cleanPhone ? `https://wa.me/${cleanPhone}` : null;
+                const callUrl = cleanPhone ? `tel:${cleanPhone}` : null;
+
+                const mapUrl = st.lat && st.lng 
+                    ? `https://www.google.com/maps/search/?api=1&query=${st.lat},${st.lng}` 
+                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(st.address || st.name)}`;
+
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition flex flex-col justify-between overflow-hidden";
+                card.innerHTML = `
+                    <div class="p-4">
+                        <div class="flex justify-between items-start gap-2 mb-2">
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-base leading-snug">${st.name}</h3>
+                                <span class="inline-block text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded mt-0.5">${st.status || 'Estudio Bíblico'}</span>
+                            </div>
+                            <span class="text-[11px] px-2.5 py-1 rounded-full border ${alertInfo.badgeClass} whitespace-nowrap">
+                                <i class="fa-solid fa-circle text-[8px] mr-1"></i> ${alertInfo.label}
+                            </span>
+                        </div>
+
+                        <!-- Botones de Comunicación Rápida (WhatsApp / Llamada) -->
+                        ${cleanPhone ? `
+                        <div class="flex items-center gap-2 my-2.5 pt-2 border-t border-slate-100">
+                            <a href="${waUrl}" target="_blank" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-1.5 px-3 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-sm">
+                                <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp
+                            </a>
+                            <a href="${callUrl}" class="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-medium py-1.5 px-3 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-sm">
+                                <i class="fa-solid fa-phone text-xs"></i> Llamar
+                            </a>
+                        </div>
+                        ` : `
+                        <p class="text-[11px] text-slate-400 italic my-2">Sin número telefónico guardado</p>
+                        `}
+
+                        <div class="space-y-1.5 text-xs text-slate-600 my-2">
+                            <p class="flex items-center gap-2">
+                                <i class="fa-solid fa-book-bookmark text-indigo-500 w-4"></i>
+                                <span class="font-semibold text-slate-700">${st.lesson || 'Lección no definida'}</span>
+                            </p>
+                            <p class="flex items-center gap-2">
+                                <i class="fa-regular fa-calendar-check text-indigo-500 w-4"></i>
+                                <span>${st.day || 'Día flexible'} ${st.time ? 'a las ' + st.time : ''}</span>
+                            </p>
+                            <p class="flex items-center gap-2">
+                                <i class="fa-solid fa-location-dot text-indigo-500 w-4"></i>
+                                <span class="truncate">${st.address || 'Sin dirección registrada'}</span>
+                            </p>
+                            <p class="flex items-center gap-2">
+                                <i class="fa-regular fa-clock text-indigo-500 w-4"></i>
+                                <span class="font-medium ${days > 14 ? 'text-rose-600 font-bold' : ''}">${lastVisitText}</span>
+                            </p>
+                        </div>
+
+                        ${st.notes ? `<p class="text-xs bg-slate-50 p-2 rounded text-slate-500 italic border border-slate-100 truncate mt-2">${st.notes}</p>` : ''}
+                    </div>
+
+                    <div class="bg-slate-50 px-4 py-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                        <div class="flex items-center space-x-1">
+                            <button onclick="openHistoryModal('${st.id}')" title="Ver Historial" class="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 border border-indigo-100">
+                                <i class="fa-solid fa-history"></i> Visitas (${st.visits ? st.visits.length : 0})
+                            </button>
+                            <a href="${mapUrl}" target="_blank" title="Abrir GPS" class="bg-slate-200 text-slate-700 hover:bg-slate-300 p-1.5 rounded-lg transition">
+                                <i class="fa-solid fa-compass"></i>
+                            </a>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <button onclick="editStudent('${st.id}')" title="Editar" class="text-slate-400 hover:text-slate-600 p-1.5 transition">
+                                <i class="fa-solid fa-pen-to-square text-sm"></i>
+                            </button>
+                            <button onclick="deleteStudent('${st.id}')" title="Eliminar" class="text-slate-400 hover:text-rose-600 p-1.5 transition">
+                                <i class="fa-solid fa-trash-can text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function switchTab(tab) {
+            const listSec = document.getElementById('sectionList');
+            const mapSec = document.getElementById('sectionMap');
+            const listBtn = document.getElementById('tabListBtn');
+            const mapBtn = document.getElementById('tabMapBtn');
+
+            if (tab === 'list') {
+                listSec.classList.remove('hidden');
+                mapSec.classList.add('hidden');
+                listBtn.className = "px-4 py-2.5 font-medium text-sm border-b-2 border-indigo-600 text-indigo-600 flex items-center gap-2 transition";
+                mapBtn.className = "px-4 py-2.5 font-medium text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2 transition";
+            } else {
+                listSec.classList.add('hidden');
+                mapSec.classList.remove('hidden');
+                mapBtn.className = "px-4 py-2.5 font-medium text-sm border-b-2 border-indigo-600 text-indigo-600 flex items-center gap-2 transition";
+                listBtn.className = "px-4 py-2.5 font-medium text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2 transition";
+                
+                setTimeout(() => {
+                    initMainMap();
+                    renderRouteSelectionList();
+                }, 100);
+            }
+        }
+
+        function openStudentModal(editId = null) {
+            document.getElementById('studentForm').reset();
+            document.getElementById('studentId').value = '';
+            document.getElementById('modalStudentTitle').innerText = 'Nuevo Registro';
+            document.getElementById('inputLat').value = '';
+            document.getElementById('inputLng').value = '';
+
+            document.getElementById('studentModal').classList.remove('hidden');
+            setTimeout(() => {
+                if (modalMap) modalMap.invalidateSize();
+            }, 200);
+
+            if (editId) {
+                const st = window.students.find(s => s.id === editId);
+                if (st) {
+                    document.getElementById('modalStudentTitle').innerText = 'Editar Registro';
+                    document.getElementById('studentId').value = st.id;
+                    document.getElementById('inputName').value = st.name || '';
+                    document.getElementById('inputPhone').value = st.phone || '';
+                    document.getElementById('inputStatus').value = st.status || 'Estudio Bíblico';
+                    document.getElementById('inputDay').value = st.day || 'Lunes';
+                    document.getElementById('inputTime').value = st.time || '';
+                    document.getElementById('inputLesson').value = st.lesson || '';
+                    document.getElementById('inputAddress').value = st.address || '';
+                    document.getElementById('inputNotes').value = st.notes || '';
+                    
+                    if (st.lat && st.lng) {
+                        document.getElementById('inputLat').value = st.lat;
+                        document.getElementById('inputLng').value = st.lng;
+                        setModalMapLocation(st.lat, st.lng);
+                    }
+                }
+            } else {
+                setModalMapLocation(-31.4201, -64.1888);
+            }
+        }
+
+        function closeStudentModal() {
+            document.getElementById('studentModal').classList.add('hidden');
+        }
+
+        function editStudent(id) {
+            openStudentModal(id);
+        }
+
+        function deleteStudent(id) {
+            if (confirm('¿Estás seguro de que deseas eliminar este registro de tu cuenta?')) {
+                window.deleteStudentFromFirestore(id);
+            }
+        }
+
+        async function handleStudentFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('studentId').value;
+            const name = document.getElementById('inputName').value;
+            const phone = document.getElementById('inputPhone').value;
+            const status = document.getElementById('inputStatus').value;
+            const day = document.getElementById('inputDay').value;
+            const time = document.getElementById('inputTime').value;
+            const lesson = document.getElementById('inputLesson').value;
+            const address = document.getElementById('inputAddress').value;
+            const notes = document.getElementById('inputNotes').value;
+            const lat = parseFloat(document.getElementById('inputLat').value) || null;
+            const lng = parseFloat(document.getElementById('inputLng').value) || null;
+
+            const existingStudent = id ? window.students.find(s => s.id === id) : null;
+
+            const studentData = {
+                id: id || null,
+                name, phone, status, day, time, lesson, address, notes, lat, lng,
+                visits: existingStudent ? (existingStudent.visits || []) : []
+            };
+
+            closeStudentModal();
+            await window.saveStudentToFirestore(studentData);
+        }
+
+        function getCurrentLocation() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    document.getElementById('inputLat').value = lat.toFixed(6);
+                    document.getElementById('inputLng').value = lng.toFixed(6);
+                    setModalMapLocation(lat, lng);
+                    showToast('GPS capturado con precisión');
+                }, error => {
+                    alert('No se pudo obtener la ubicación GPS: ' + error.message);
+                }, { enableHighAccuracy: true });
+            } else {
+                alert('La geolocalización no está disponible en este dispositivo.');
+            }
+        }
+
+        function initModalMap() {
+            if (modalMap) return;
+            modalMap = L.map('modalMap').setView([-31.4201, -64.1888], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(modalMap);
+
+            modalMap.on('click', function(e) {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+                document.getElementById('inputLat').value = lat.toFixed(6);
+                document.getElementById('inputLng').value = lng.toFixed(6);
+                setModalMapLocation(lat, lng);
+            });
+        }
+
+        function setModalMapLocation(lat, lng) {
+            if (!modalMap) return;
+            if (modalMarker) modalMap.removeLayer(modalMarker);
+            modalMarker = L.marker([lat, lng]).addTo(modalMap);
+            modalMap.setView([lat, lng], 15);
+        }
+
+        function openHistoryModal(studentId) {
+            const st = window.students.find(s => s.id === studentId);
+            if (!st) return;
+
+            document.getElementById('visitStudentId').value = st.id;
+            document.getElementById('historyStudentName').innerText = st.name;
+            document.getElementById('historyStudentMeta').innerText = `${st.lesson || 'Sin lección'} - ${st.address || 'Sin dirección'}`;
+            document.getElementById('visitDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('visitLesson').value = st.lesson || '';
+            document.getElementById('visitNotes').value = '';
+
+            renderVisitsTimeline(st);
+            document.getElementById('historyModal').classList.remove('hidden');
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('historyModal').classList.add('hidden');
+        }
+
+        async function handleVisitFormSubmit(e) {
+            e.preventDefault();
+            const studentId = document.getElementById('visitStudentId').value;
+            const date = document.getElementById('visitDate').value;
+            const rating = document.getElementById('visitRating').value;
+            const lesson = document.getElementById('visitLesson').value;
+            const notes = document.getElementById('visitNotes').value;
+
+            const st = window.students.find(s => s.id === studentId);
+            if (st) {
+                const visits = st.visits ? [...st.visits] : [];
+                visits.push({ id: 'v_' + Date.now(), date, rating, lesson, notes });
+
+                await window.updateStudentVisitsInFirestore(studentId, visits, lesson);
+                st.visits = visits;
+                renderVisitsTimeline(st);
+            }
+        }
+
+        async function deleteVisit(visitId) {
+            const studentId = document.getElementById('visitStudentId').value;
+            const st = window.students.find(s => s.id === studentId);
+            if (st && st.visits) {
+                const updatedVisits = st.visits.filter(v => v.id !== visitId);
+                await window.updateStudentVisitsInFirestore(studentId, updatedVisits);
+                st.visits = updatedVisits;
+                renderVisitsTimeline(st);
+            }
+        }
+
+        function renderVisitsTimeline(student) {
+            const container = document.getElementById('visitsTimeline');
+            container.innerHTML = '';
+
+            if (!student.visits || student.visits.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-400 italic">No hay historial de visitas registradas.</p>';
+                return;
+            }
+
+            const sorted = [...student.visits].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            sorted.forEach(v => {
+                const div = document.createElement('div');
+                div.className = "bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs flex justify-between items-start";
+                div.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="font-bold text-slate-700"><i class="fa-regular fa-calendar mr-1"></i>${v.date}</span>
+                            <span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-medium">${v.rating}</span>
+                        </div>
+                        ${v.lesson ? `<p class="font-semibold text-slate-800 mb-0.5">Tema: ${v.lesson}</p>` : ''}
+                        ${v.notes ? `<p class="text-slate-600">${v.notes}</p>` : ''}
+                    </div>
+                    <button onclick="deleteVisit('${v.id}')" class="text-slate-300 hover:text-rose-500 p-1">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function initMainMap() {
+            if (map) {
+                map.invalidateSize();
+                renderMapMarkers();
+                return;
+            }
+
+            map = L.map('map').setView([-31.4201, -64.1888], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            routeLayerGroup = L.layerGroup().addTo(map);
+            renderMapMarkers();
+        }
+
+        function renderMapMarkers() {
+            if (!map) return;
+
+            mapMarkers.forEach(m => map.removeLayer(m));
+            mapMarkers = [];
+            const bounds = [];
+
+            window.students.forEach(st => {
+                if (st.lat && st.lng) {
+                    const days = getDaysSinceLastVisit(st);
+                    const alertInfo = getAlertStatus(days);
+
+                    let pinColor = '#10b981';
+                    if (alertInfo.code === 'YELLOW') pinColor = '#f59e0b';
+                    if (alertInfo.code === 'RED') pinColor = '#f43f5e';
+
+                    const customIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div style="background-color:${pinColor};" class="w-7 h-7 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-xs font-bold">
+                                <i class="fa-solid fa-user"></i>
+                               </div>`,
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 14]
+                    });
+
+                    const cleanPhone = cleanPhoneNumber(st.phone);
+                    const waUrl = cleanPhone ? `https://wa.me/${cleanPhone}` : null;
+                    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${st.lat},${st.lng}`;
+
+                    const popupContent = `
+                        <div class="p-1 max-w-xs">
+                            <h4 class="font-bold text-slate-800 text-sm mb-1">${st.name}</h4>
+                            <p class="text-xs text-slate-600 mb-1"><b>Lección:</b> ${st.lesson || 'No especificada'}</p>
+                            <p class="text-xs text-slate-600 mb-2"><b>Dirección:</b> ${st.address || 'Sin dirección'}</p>
+                            <div class="flex gap-1 flex-wrap">
+                                ${waUrl ? `<a href="${waUrl}" target="_blank" class="bg-emerald-500 text-white text-[10px] font-semibold px-2 py-1 rounded flex items-center gap-1"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>` : ''}
+                                <a href="${googleMapsUrl}" target="_blank" class="bg-blue-600 text-white text-[10px] font-semibold px-2 py-1 rounded flex items-center gap-1"><i class="fa-solid fa-diamond-turn-right"></i> Ir con GPS</a>
+                            </div>
+                        </div>
+                    `;
+
+                    const marker = L.marker([st.lat, st.lng], { icon: customIcon }).addTo(map);
+                    marker.bindPopup(popupContent);
+                    mapMarkers.push(marker);
+                    bounds.push([st.lat, st.lng]);
+                }
+            });
+
+            if (bounds.length > 0) {
+                map.fitBounds(bounds, { padding: [30, 30] });
+            }
+        }
+
+        function renderRouteSelectionList() {
+            const container = document.getElementById('routeSelectionList');
+            container.innerHTML = '';
+
+            window.students.forEach(st => {
+                if (!st.lat || !st.lng) return;
+
+                const days = getDaysSinceLastVisit(st);
+                const alertInfo = getAlertStatus(days);
+                const isChecked = selectedForRouteIds.includes(st.id);
+
+                const item = document.createElement('label');
+                item.className = "flex items-center justify-between p-2 bg-white rounded border border-slate-200 cursor-pointer text-xs hover:bg-slate-50 transition";
+                item.innerHTML = `
+                    <div class="flex items-center gap-2 truncate pr-2">
+                        <input type="checkbox" value="${st.id}" ${isChecked ? 'checked' : ''} onchange="toggleStudentRouteSelection('${st.id}')" class="rounded text-indigo-600 focus:ring-indigo-500">
+                        <span class="font-medium text-slate-800 truncate">${st.name}</span>
+                    </div>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded border ${alertInfo.badgeClass} whitespace-nowrap">
+                        ${days === 999 ? 'Nunca' : days + 'd'}
+                    </span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function toggleStudentRouteSelection(id) {
+            if (selectedForRouteIds.includes(id)) {
+                selectedForRouteIds = selectedForRouteIds.filter(i => i !== id);
+            } else {
+                selectedForRouteIds.push(id);
+            }
+        }
+
+        function selectForRoute(type) {
+            selectedForRouteIds = [];
+            window.students.forEach(st => {
+                if (!st.lat || !st.lng) return;
+                const days = getDaysSinceLastVisit(st);
+                const alertInfo = getAlertStatus(days);
+
+                if (type === 'ALL') {
+                    selectedForRouteIds.push(st.id);
+                } else if (type === 'URGENT' && (alertInfo.code === 'RED' || alertInfo.code === 'YELLOW')) {
+                    selectedForRouteIds.push(st.id);
+                }
+            });
+            renderRouteSelectionList();
+        }
+
+        function clearRouteSelection() {
+            selectedForRouteIds = [];
+            renderRouteSelectionList();
+            if (routeLayerGroup) routeLayerGroup.clearLayers();
+        }
+
+        function drawOptimizedRoute() {
+            if (selectedForRouteIds.length < 2) {
+                alert('Selecciona al menos 2 personas con ubicación GPS para calcular el recorrido.');
+                return;
+            }
+
+            const selectedStudents = window.students.filter(s => selectedForRouteIds.includes(s.id));
+            let unvisited = [...selectedStudents];
+            let route = [unvisited.shift()];
+
+            while (unvisited.length > 0) {
+                let current = route[route.length - 1];
+                let nearestIdx = 0;
+                let minDistance = Infinity;
+
+                for (let i = 0; i < unvisited.length; i++) {
+                    let dist = Math.hypot(current.lat - unvisited[i].lat, current.lng - unvisited[i].lng);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        nearestIdx = i;
+                    }
+                }
+                route.push(unvisited.splice(nearestIdx, 1)[0]);
+            }
+
+            if (routeLayerGroup) routeLayerGroup.clearLayers();
+
+            const latLngs = route.map(s => [s.lat, s.lng]);
+            const polyline = L.polyline(latLngs, { color: '#6366f1', weight: 4, opacity: 0.8, dashArray: '8, 8' }).addTo(routeLayerGroup);
+            map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+
+            showToast(`Ruta trazada para ${route.length} paradas`);
+        }
+    </script>
+
+    <!-- SERVICE WORKER & PWA INSTALLATION LOGIC -->
+    <script>
+        let deferredPrompt = null;
+
+        // Registro del Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registrado con éxito:', reg.scope))
+                    .catch(err => console.log('Error al registrar Service Worker:', err));
+            });
+        }
+
+        // Captura del evento de instalación PWA
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const installBtn = document.getElementById('pwaInstallBtn');
+            if (installBtn) {
+                installBtn.classList.remove('hidden');
+            }
+        });
+
+        // Función al hacer clic en Instalar App
+        async function installPWA() {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                console.log('El usuario aceptó la instalación de la App');
+            }
+            deferredPrompt = null;
+            document.getElementById('pwaInstallBtn').classList.add('hidden');
+        }
+
+        // Ocultar botón si la app ya fue instalada
+        window.addEventListener('appinstalled', () => {
+            deferredPrompt = null;
+            document.getElementById('pwaInstallBtn').classList.add('hidden');
+            showToast('¡App instalada correctamente en tu dispositivo!');
+        });
+    </script>
+</body>
+</html>
