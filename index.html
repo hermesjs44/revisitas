@@ -577,22 +577,7 @@
         <span id="toastMessage">Operación realizada con éxito</span>
     </div>
 
-    <!-- Generación del Favicon dinámico a partir del ícono 3D SVG -->
-    <script>
-        window.addEventListener('DOMContentLoaded', () => {
-            const svgElement = document.getElementById('svgPreaching3D');
-            if (svgElement) {
-                const svgData = new XMLSerializer().serializeToString(svgElement);
-                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-                const url = URL.createObjectURL(svgBlob);
-                const link = document.createElement('link');
-                link.rel = 'icon';
-                link.type = 'image/svg+xml';
-                link.href = url;
-                document.head.appendChild(link);
-            }
-        });
-    </script>
+    <link rel="icon" type="image/png" href="rev-192.png">
 
     <!-- FIREBASE SERVICES & MULTI-USER DATA ISOLATION -->
     <script type="module">
@@ -776,7 +761,7 @@
                     window.showToast('Nuevo registro guardado con éxito');
                 }
             } catch (err) {
-                alert('Error al guardar: ' + err.message);
+                window.showToast('Error al guardar: ' + err.message, 'fa-triangle-exclamation text-rose-400');
             }
         };
 
@@ -788,7 +773,7 @@
                 await deleteDoc(docRef);
                 window.showToast('Registro eliminado de tu cuenta', 'fa-trash-can text-rose-400');
             } catch (err) {
-                alert('Error al eliminar: ' + err.message);
+                window.showToast('Error al eliminar: ' + err.message, 'fa-triangle-exclamation text-rose-400');
             }
         };
 
@@ -802,7 +787,7 @@
                 await updateDoc(docRef, payload);
                 window.showToast('Visita guardada en tu cuenta');
             } catch (err) {
-                alert('Error al actualizar visitas: ' + err.message);
+                window.showToast('Error al actualizar visitas: ' + err.message, 'fa-triangle-exclamation text-rose-400');
             }
         };
     </script>
